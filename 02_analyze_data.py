@@ -8,7 +8,7 @@ import pandas as pd
 # Configuration
 RANSAP_DIR = Path("RanSAP")
 RANSMAP_DIR = Path("RanSMAP")
-BEGIN_DIR = Path("Begin")
+BENIGN_DIR = Path("Benign")
 
 
 # Get column names based on the dataset according to README
@@ -34,8 +34,8 @@ def get_columns(name, file_name):
                 "Entropy #2"
             ]
 
-    # RanSMAP and Begin use the same CSV format
-    elif name in ("RanSMAP", "Begin"):
+    # RanSMAP and Benign use the same CSV format
+    elif name in ("RanSMAP", "Benign"):
         # read file data of storage access
         if file_name.endswith("ata_read.csv"):
             return [
@@ -208,8 +208,8 @@ if __name__ == "__main__":
 
     print("\n" + "-" * 50 + "\n")
 
-    # Analyze Begin
-    analyze_dataset("Begin", BEGIN_DIR)
+    # Analyze Benign
+    analyze_dataset("Benign", BENIGN_DIR)
 
     # Closure
-    print("\nAnalysis complete")
+    print("\nAnalysis Complete")
