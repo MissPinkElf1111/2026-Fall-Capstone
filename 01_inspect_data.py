@@ -1,4 +1,3 @@
-
 """
 This python file is for inspecting the data from CSV files
 """
