@@ -27,6 +27,7 @@ STORAGE_COLUMNS = [
     # Identification / alignment
     "dataset",
     "execution_id",
+    "label",
     "window_start_ns",
     "window_end_ns",
 
@@ -75,6 +76,7 @@ MEMORY_COLUMNS = [
     # Identification / alignment
     "dataset",
     "execution_id",
+    "label",
     "window_start_ns",
     "window_end_ns",
 
@@ -187,7 +189,7 @@ def identify_file(path):
 
     return None, None
 
-# Keep RanSAP and RanSMAP executions separate even when IDs overlap
+# Keep RanSAP, RanSMAP and Begin executions separate even when IDs overlap
 def get_dataset(path):
     name = path.name
 
@@ -196,6 +198,9 @@ def get_dataset(path):
 
     if name.startswith("RanSMAP_"):
         return "RanSMAP"
+
+    if name.startswith("Begin_"):
+        return "Begin"
 
     raise ValueError(f"Cannot identify dataset from: {path}")
 
@@ -473,6 +478,7 @@ def make_rows(category, starts, states, maximum):
             counts = {op: count(op) for op in operations}
             total_count = sum(counts.values())
             row = {"dataset": dataset, "execution_id": eid,
+                   "label": 0 if dataset == "Begin" else 1,
                    "window_start_ns": win * WINDOW_SIZE_NS,
                    "window_end_ns": (win + 1) * WINDOW_SIZE_NS}
 
@@ -577,14 +583,14 @@ def validate_output(df, columns, category):
     if list(df.columns) != columns or df.isna().any().any():
         raise RuntimeError(f"{category}: invalid feature output")
 
-    numeric = df.drop(columns=["dataset", "execution_id"]).to_numpy(dtype=float)
+    numeric = df.drop(columns=["dataset", "execution_id", "label"]).to_numpy(dtype=float)
 
     if not np.isfinite(numeric).all():
         raise RuntimeError(f"{category}: non-finite feature values")
 
 
 # Four metadata columns identify the same window across all six outputs
-KEY_COLUMNS = ["dataset", "execution_id", "window_start_ns", "window_end_ns"]
+KEY_COLUMNS = ["dataset", "execution_id", "label", "window_start_ns", "window_end_ns"]
 
 # Cross-operation statistics are copied into relevant files without recalculation
 STORAGE_SHARED = [
@@ -719,4 +725,3 @@ if __name__ == "__main__":
 
     # Closure
     print("\nFeature engineering complete")
-
