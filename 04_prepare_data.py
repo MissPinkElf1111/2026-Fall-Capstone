@@ -12,6 +12,7 @@ PREPARED_DIR = Path("prepared")
 # Create a folder for holding prepared data
 PREPARED_DIR.mkdir(exist_ok=True)
 
+# Set chunk size as 100000 rows
 CHUNK_SIZE = 100000
 
 # Dataset schemas
@@ -43,8 +44,8 @@ def get_columns(name, file_type):
                 "Entropy #2"
             ]
 
-    # RanSMAP and Begin use the same CSV format
-    elif name in ("RanSMAP", "Begin"):
+    # RanSMAP and Benign use the same CSV format
+    elif name in ("RanSMAP", "Benign"):
         # Storage read
         if file_type == "ata_read.csv":
             return [
@@ -134,8 +135,8 @@ def get_unused_columns(name, file_type):
         # Keep all meaningful RanSAP columns
         return []
 
-    # RanSMAP and Begin use the same unused column definitions
-    elif name in ("RanSMAP", "Begin"):
+    # RanSMAP and Benign use the same unused column definitions
+    elif name in ("RanSMAP", "Benign"):
         # Storage read
         if file_type == "ata_read.csv":
             return ["-1", "0"]
@@ -194,25 +195,25 @@ def identify_file(file_name):
         elif file_name.endswith("_mem_exec.csv"):
             return "RanSMAP", "mem_exec.csv"
 
-    # Begin
-    elif file_name.startswith("Begin_"):
+    # Benign
+    elif file_name.startswith("Benign_"):
         if file_name.endswith("_ata_read.csv"):
-            return "Begin", "ata_read.csv"
+            return "Benign", "ata_read.csv"
 
         elif file_name.endswith("_ata_write.csv"):
-            return "Begin", "ata_write.csv"
+            return "Benign", "ata_write.csv"
 
         elif file_name.endswith("_mem_read.csv"):
-            return "Begin", "mem_read.csv"
+            return "Benign", "mem_read.csv"
 
         elif file_name.endswith("_mem_write.csv"):
-            return "Begin", "mem_write.csv"
+            return "Benign", "mem_write.csv"
 
         elif file_name.endswith("_mem_readwrite.csv"):
-            return "Begin", "mem_readwrite.csv"
+            return "Benign", "mem_readwrite.csv"
 
         elif file_name.endswith("_mem_exec.csv"):
-            return "Begin", "mem_exec.csv"
+            return "Benign", "mem_exec.csv"
 
     # Unknown file
     return None, None
@@ -356,6 +357,7 @@ def prepare_file(input_file):
 
 # Main
 if __name__ == "__main__":
+    # File title
     print("\nRansomware Data Preparation\n")
 
     # Check that results folder exists
@@ -377,4 +379,4 @@ if __name__ == "__main__":
                 prepare_file(input_file)
 
             # Closure
-            print("Data preparation complete")
+            print("Data Preparation Complete")
