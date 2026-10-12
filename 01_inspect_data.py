@@ -1,3 +1,4 @@
+
 """
 This python file is for inspecting the data from CSV files
 """
@@ -7,6 +8,7 @@ from pathlib import Path
 # Configuration
 RANSAP_DIR = Path("RanSAP")
 RANSMAP_DIR = Path("RanSMAP")
+BENIGN_DIR = Path("Begin")
 
 # Find CSV Files
 def find_csv(name, dataset):
@@ -65,8 +67,9 @@ if __name__ == "__main__":
     inspect_dataset("RanSAP", RANSAP_DIR)
     print("\n" + "-" * 50 + "\n")
     inspect_dataset("RanSMAP", RANSMAP_DIR)
+    print("\n" + "-" * 50 + "\n")
+    inspect_dataset("Benign", BENIGN_DIR)
     print("\n")
 
     # Closure
     print("Dataset Inspection Complete")
-
