@@ -18,7 +18,7 @@ VALIDATION_RATIO = 0.15
 TEST_RATIO = 0.15
 RANDOM_SEED = 42
 
-# Step 05 outputs: storage contains RanSAP and RanSMAP; memory contains RanSMAP.
+# Step 05 outputs: storage contains RanSAP, RanSMAP and Begin; memory contains RanSMAP and Begin.
 FEATURE_FILES = {
     "storage_read": "storage_read_features.csv",
     "storage_write": "storage_write_features.csv",
@@ -52,31 +52,37 @@ def load_feature_data(data_type, filename):
     if dataframe.empty:
         raise ValueError(f"Feature file is empty: {path}")
 
-    missing = set(WINDOW_COLUMNS) - set(dataframe.columns)
+    missing = set(WINDOW_COLUMNS + ["label"]) - set(dataframe.columns)
 
     if missing:
         raise ValueError(f"{filename} is missing columns: {sorted(missing)}")
 
-    if dataframe[WINDOW_COLUMNS].isna().any().any():
-        raise ValueError(f"{filename} has missing execution/window identifiers.")
+    if dataframe[WINDOW_COLUMNS + ["label"]].isna().any().any():
+        raise ValueError(f"{filename} has missing execution/window identifiers or labels.")
 
     if dataframe.duplicated(subset=WINDOW_COLUMNS).any():
         raise ValueError(f"{filename} contains duplicate execution windows.")
 
-    # The two storage files must contain both source datasets.
+    if not dataframe["label"].isin([0, 1]).all():
+        raise ValueError(f"{filename} contains labels other than 0 and 1.")
+
+    if (dataframe.groupby(EXECUTION_COLUMNS)["label"].nunique() > 1).any():
+        raise ValueError(f"{filename} contains conflicting labels for one execution.")
+
+    # The two storage files must contain all three source datasets.
     if data_type.startswith("storage_"):
         found = set(dataframe["dataset"].unique())
-        expected = {"RanSAP", "RanSMAP"}
+        expected = {"RanSAP", "RanSMAP", "Begin"}
 
         if not expected.issubset(found):
-            raise ValueError(f"{filename} must contain RanSAP and RanSMAP; found {sorted(found)}")
+            raise ValueError(f"{filename} must contain RanSAP, RanSMAP and Begin; found {sorted(found)}")
 
     return dataframe
 
-# Calculate execution counts, keeping each global partition nonempty
+# Calculate execution counts, keeping each class partition nonempty
 def calculate_split_counts(number_of_executions):
     if number_of_executions < 3:
-        raise ValueError("At least three distinct executions are required.")
+        raise ValueError("At least three distinct executions per class are required.")
 
     train_count = max(1, int(number_of_executions * TRAIN_RATIO))
     validation_count = max(1, int(number_of_executions * VALIDATION_RATIO))
@@ -88,21 +94,27 @@ def calculate_split_counts(number_of_executions):
     return train_count, validation_count, test_count
 
 # Assign each (dataset, execution_id) pair exactly once across all modalities
+# Stratify by label so each partition contains ransomware and benign executions
 def create_global_execution_split(feature_data):
     executions = pd.concat(
-        [frame[EXECUTION_COLUMNS] for frame in feature_data.values()],
+        [frame[EXECUTION_COLUMNS + ["label"]] for frame in feature_data.values()],
         ignore_index=True,
     ).drop_duplicates().sort_values(EXECUTION_COLUMNS).reset_index(drop=True)
 
-    count = len(executions)
-    train_count, validation_count, _ = calculate_split_counts(count)
-    rng = np.random.default_rng(RANDOM_SEED)
-    shuffled_indices = rng.permutation(count)
+    if (executions.groupby(EXECUTION_COLUMNS)["label"].nunique() > 1).any():
+        raise ValueError("Conflicting labels for an execution across feature files.")
 
-    assignments = np.empty(count, dtype=object)
-    assignments[shuffled_indices[:train_count]] = "train"
-    assignments[shuffled_indices[train_count:train_count + validation_count]] = "validation"
-    assignments[shuffled_indices[train_count + validation_count:]] = "test"
+    assignments = np.empty(len(executions), dtype=object)
+    rng = np.random.default_rng(RANDOM_SEED)
+
+    for label in (0, 1):
+        indices = np.flatnonzero(executions["label"].to_numpy() == label)
+        train_count, validation_count, _ = calculate_split_counts(len(indices))
+        shuffled_indices = rng.permutation(indices)
+
+        assignments[shuffled_indices[:train_count]] = "train"
+        assignments[shuffled_indices[train_count:train_count + validation_count]] = "validation"
+        assignments[shuffled_indices[train_count + validation_count:]] = "test"
 
     executions["split"] = assignments
 
@@ -111,7 +123,7 @@ def create_global_execution_split(feature_data):
 # Join the shared assignment onto every original feature window
 def apply_execution_split(dataframe, global_split, data_type):
     result = dataframe.merge(
-        global_split,
+        global_split[EXECUTION_COLUMNS + ["split"]],
         on=EXECUTION_COLUMNS,
         how="left",
         sort=False,
@@ -159,7 +171,7 @@ if __name__ == "__main__":
         for data_type, filename in FEATURE_FILES.items()
     }
 
-    # One assignment shared by RanSAP/RanSMAP storage and RanSMAP memory
+    # One assignment shared by RanSAP/RanSMAP/Begin storage and RanSMAP/Begin memory
     global_split = create_global_execution_split(feature_data)
     global_split.to_csv(SPLITS_DIR / "execution_split_assignments.csv", index=False)
 
@@ -176,4 +188,4 @@ if __name__ == "__main__":
         save_split_files(split_data, data_type)
 
     # Closure
-    print("Data splitting complete")
+    print("\nData splitting complete")
