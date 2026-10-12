@@ -1,7 +1,7 @@
 """
 Split six behavioral feature datasets into:
     training (70%)
-    validation (15%),
+    validation (15%)
     testing (15%)
 by complete execution.
 """
@@ -18,7 +18,7 @@ VALIDATION_RATIO = 0.15
 TEST_RATIO = 0.15
 RANDOM_SEED = 42
 
-# Step 05 outputs: storage contains RanSAP, RanSMAP and Begin; memory contains RanSMAP and Begin.
+# Step 05 outputs: storage contains RanSAP, RanSMAP and Benign; memory contains RanSMAP and Benign.
 FEATURE_FILES = {
     "storage_read": "storage_read_features.csv",
     "storage_write": "storage_write_features.csv",
@@ -72,10 +72,10 @@ def load_feature_data(data_type, filename):
     # The two storage files must contain all three source datasets.
     if data_type.startswith("storage_"):
         found = set(dataframe["dataset"].unique())
-        expected = {"RanSAP", "RanSMAP", "Begin"}
+        expected = {"RanSAP", "RanSMAP", "Benign"}
 
         if not expected.issubset(found):
-            raise ValueError(f"{filename} must contain RanSAP, RanSMAP and Begin; found {sorted(found)}")
+            raise ValueError(f"{filename} must contain RanSAP, RanSMAP and Benign; found {sorted(found)}")
 
     return dataframe
 
@@ -171,7 +171,7 @@ if __name__ == "__main__":
         for data_type, filename in FEATURE_FILES.items()
     }
 
-    # One assignment shared by RanSAP/RanSMAP/Begin storage and RanSMAP/Begin memory
+    # One assignment shared by RanSAP/RanSMAP/Benign storage and RanSMAP/Benign memory
     global_split = create_global_execution_split(feature_data)
     global_split.to_csv(SPLITS_DIR / "execution_split_assignments.csv", index=False)
 
@@ -188,4 +188,4 @@ if __name__ == "__main__":
         save_split_files(split_data, data_type)
 
     # Closure
-    print("\nData splitting complete")
+    print("\nData Splitting Complete")
