@@ -7,6 +7,7 @@ from pathlib import Path
 # Configuration
 RANSAP_DIR = Path("RanSAP")
 RANSMAP_DIR = Path("RanSMAP")
+BEGIN_DIR = Path("Begin")
 
 # Create a folder to store combined data
 RESULTS_DIR = Path("results")
@@ -36,8 +37,8 @@ def get_columns(name, file_name):
                 "Entropy #2"
             ]
 
-    # RanSMAP
-    elif name == "RanSMAP":
+    # RanSMAP and Begin use the same CSV format
+    elif name in ("RanSMAP", "Begin"):
         # read file of storage access
         if file_name.endswith("ata_read.csv"):
             return [
@@ -218,3 +219,8 @@ if __name__ == "__main__":
 
     # Combine RanSMAP
     combine_dataset("RanSMAP", RANSMAP_DIR)
+
+    print("\n" + "-" * 50 + "\n")
+
+    # Combine Begin
+    combine_dataset("Begin", BEGIN_DIR)
