@@ -43,8 +43,8 @@ def get_columns(name, file_type):
                 "Entropy #2"
             ]
 
-    # RanSMAP
-    elif name == "RanSMAP":
+    # RanSMAP and Begin use the same CSV format
+    elif name in ("RanSMAP", "Begin"):
         # Storage read
         if file_type == "ata_read.csv":
             return [
@@ -134,8 +134,8 @@ def get_unused_columns(name, file_type):
         # Keep all meaningful RanSAP columns
         return []
 
-    # RanSMAP
-    elif name == "RanSMAP":
+    # RanSMAP and Begin use the same unused column definitions
+    elif name in ("RanSMAP", "Begin"):
         # Storage read
         if file_type == "ata_read.csv":
             return ["-1", "0"]
@@ -193,6 +193,26 @@ def identify_file(file_name):
 
         elif file_name.endswith("_mem_exec.csv"):
             return "RanSMAP", "mem_exec.csv"
+
+    # Begin
+    elif file_name.startswith("Begin_"):
+        if file_name.endswith("_ata_read.csv"):
+            return "Begin", "ata_read.csv"
+
+        elif file_name.endswith("_ata_write.csv"):
+            return "Begin", "ata_write.csv"
+
+        elif file_name.endswith("_mem_read.csv"):
+            return "Begin", "mem_read.csv"
+
+        elif file_name.endswith("_mem_write.csv"):
+            return "Begin", "mem_write.csv"
+
+        elif file_name.endswith("_mem_readwrite.csv"):
+            return "Begin", "mem_readwrite.csv"
+
+        elif file_name.endswith("_mem_exec.csv"):
+            return "Begin", "mem_exec.csv"
 
     # Unknown file
     return None, None
