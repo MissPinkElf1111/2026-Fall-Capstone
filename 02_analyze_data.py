@@ -1,3 +1,4 @@
+
 """
 This python file is for analyzing the data from CSV files
 """
@@ -8,6 +9,7 @@ import pandas as pd
 # Configuration
 RANSAP_DIR = Path("RanSAP")
 RANSMAP_DIR = Path("RanSMAP")
+BEGIN_DIR = Path("Begin")
 
 
 # Get column names based on the dataset according to README
@@ -33,8 +35,8 @@ def get_columns(name, file_name):
                 "Entropy #2"
             ]
 
-    # RanSMAP
-    elif name == "RanSMAP":
+    # RanSMAP and Begin use the same CSV format
+    elif name in ("RanSMAP", "Begin"):
         # read file data of storage access
         if file_name.endswith("ata_read.csv"):
             return [
@@ -204,6 +206,11 @@ if __name__ == "__main__":
 
     # Analyze RanSMAP
     analyze_dataset("RanSMAP", RANSMAP_DIR)
+
+    print("\n" + "-" * 50 + "\n")
+
+    # Analyze Begin
+    analyze_dataset("Begin", BEGIN_DIR)
 
     # Closure
     print("\nAnalysis complete")
