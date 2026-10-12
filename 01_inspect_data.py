@@ -7,7 +7,7 @@ from pathlib import Path
 # Configuration
 RANSAP_DIR = Path("RanSAP")
 RANSMAP_DIR = Path("RanSMAP")
-BENIGN_DIR = Path("Begin")
+BENIGN_DIR = Path("Benign")
 
 # Find CSV Files
 def find_csv(name, dataset):
