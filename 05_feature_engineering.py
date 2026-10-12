@@ -4,8 +4,9 @@ Preserves feature definitions and window alignment of the uploaded script.
 Initial time window: 0.1 seconds
 
 Features: 26 storage + 60 memory
-"""
 
+label = 0 for benign executions, label = 1 for ransomware executions
+"""
 
 from pathlib import Path
 from collections import defaultdict
@@ -18,7 +19,6 @@ FEATURES_DIR = Path("features")
 
 # Memory limit per read
 CHUNK_SIZE = 250_000
-
 
 WINDOW_SIZE_NS = 100_000_000    # 0.1 Sec
 WINDOW_SIZE_SECONDS = WINDOW_SIZE_NS / 1_000_000_000
@@ -189,7 +189,7 @@ def identify_file(path):
 
     return None, None
 
-# Keep RanSAP, RanSMAP and Begin executions separate even when IDs overlap
+# Keep RanSAP, RanSMAP and Benign executions separate even when IDs overlap
 def get_dataset(path):
     name = path.name
 
@@ -199,8 +199,8 @@ def get_dataset(path):
     if name.startswith("RanSMAP_"):
         return "RanSMAP"
 
-    if name.startswith("Begin_"):
-        return "Begin"
+    if name.startswith("Benign_"):
+        return "Benign"
 
     raise ValueError(f"Cannot identify dataset from: {path}")
 
@@ -478,7 +478,7 @@ def make_rows(category, starts, states, maximum):
             counts = {op: count(op) for op in operations}
             total_count = sum(counts.values())
             row = {"dataset": dataset, "execution_id": eid,
-                   "label": 0 if dataset == "Begin" else 1,
+                   "label": 0 if dataset == "Benign" else 1,
                    "window_start_ns": win * WINDOW_SIZE_NS,
                    "window_end_ns": (win + 1) * WINDOW_SIZE_NS}
 
@@ -724,4 +724,4 @@ if __name__ == "__main__":
         print(f"{category}: {len(starts)} executions, {len(df):,} windows", flush=True)
 
     # Closure
-    print("\nFeature engineering complete")
+    print("\nFeature Engineering Complete")
