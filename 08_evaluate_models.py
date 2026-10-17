@@ -626,16 +626,14 @@ if __name__ == "__main__":
             "have consistent split assignments."
         )
 
-    """
-     Save validation fusion scores so Step 10 can calibrate a fusion
-     decision threshold without inspecting the test executions
-    """
+    # Save validation fusion scores
     combined_validation_results = pd.DataFrame()
     if fusion_allowed:
         combined_validation_results = combine_execution_scores(
             validation_execution_results["storage"],
             validation_execution_results["memory"]
         )
+        
     combined_validation_results.to_csv(
         EVALUATION_DIR / "combined_validation_execution_scores.csv", index=False
     )
