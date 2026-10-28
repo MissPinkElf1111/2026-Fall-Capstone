@@ -18,8 +18,6 @@ The pipeline extracts behavioural features, trains models on benign activity, an
 - Score-level fusion of storage and memory results.
 - Execution-level detection evaluation.
 
-The reported results are preliminary findings from the October 19, 2026 midterm report. Additional model comparisons, feature ablation, and generalisation testing remain planned work.
-
 ## Repository Structure
 
 | Script | Purpose | Output |
