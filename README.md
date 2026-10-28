@@ -39,7 +39,7 @@ The reported results are preliminary findings from the October 19, 2026 midterm 
 
 ## Data Requirements
 
-Raw datasets are not included in the repository. Place the following folders in the repository root:
+The following files are included in the repository.
 
 ```text
 2026-Fall-Capstone/
