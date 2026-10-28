@@ -320,7 +320,7 @@ After changing an upstream setting, rerun the affected stage and its downstream 
 
 ## Preliminary Results
 
-The following results are reported in the October 19, 2026 midterm report.
+The following results were reported:
 
 ### Data Partitions
 
