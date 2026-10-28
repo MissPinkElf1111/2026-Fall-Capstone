@@ -35,7 +35,6 @@ The reported results are preliminary findings from the October 19, 2026 midterm 
 | `09_analyze_evalutaion.py` | Analyse score distributions, novelty rates, outliers, and data quality | `analysis/` |
 | `10_evaluate_detection.py` | Calibrate detection thresholds and calculate classification metrics | `performance/` |
 
-**Note:** `09_analyze_evalutaion.py` is the actual filename in the repository.
 
 ## Data Requirements
 
