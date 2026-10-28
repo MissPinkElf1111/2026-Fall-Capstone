@@ -56,7 +56,7 @@ The following files are included in the repository.
 └── README.md
 ```
 
-| Folder | Expected Data | Label |
+| Folder | Data | Label |
 | --- | --- | --- |
 | `RanSAP/` | WannaCry storage traces | `1` — ransomware |
 | `RanSMAP/` | WannaCry storage and memory traces | `1` — ransomware |
