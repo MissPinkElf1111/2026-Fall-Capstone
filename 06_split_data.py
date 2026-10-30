@@ -1,24 +1,40 @@
 """
-Split six behavioral feature datasets into:
+Split behavioral feature datasets into:
     training (70%)
     validation (15%)
     testing (15%)
 by complete execution.
+
+Original Step 05:
+    Split six feature datasets into splits/.
+
+Optional Step 05A:
+    If features_paper/ exists, split the paper's
+    23-feature datasets into splits_paper/.
+
+Both configurations share the same execution assignments.
 """
 
 from pathlib import Path
 import numpy as np
 import pandas as pd
 
+
 # Configuration
 FEATURES_DIR = Path("features")
 SPLITS_DIR = Path("splits")
+
+# Optional paper feature configuration
+PAPER_FEATURES_DIR = Path("features_paper")
+PAPER_SPLITS_DIR = Path("splits_paper")
+
 TRAIN_RATIO = 0.70
 VALIDATION_RATIO = 0.15
 TEST_RATIO = 0.15
 RANDOM_SEED = 42
 
-# Step 05 outputs: storage contains RanSAP, RanSMAP and Benign; memory contains RanSMAP and Benign.
+# Storage contains RanSAP, RanSMAP and Benign.
+# Memory contains RanSMAP and Benign.
 FEATURE_FILES = {
     "storage_read": "storage_read_features.csv",
     "storage_write": "storage_write_features.csv",
@@ -28,15 +44,28 @@ FEATURE_FILES = {
     "memory_execute": "memory_execute_features.csv",
 }
 
+# Optional outputs:
+# Storage: 5 features
+# Memory: 18 features
+PAPER_FEATURE_FILES = {
+    "storage_paper": "storage_paper_features.csv",
+    "memory_paper": "memory_paper_features.csv",
+}
+
+
 EXECUTION_COLUMNS = ["dataset", "execution_id"]
+
 WINDOW_COLUMNS = EXECUTION_COLUMNS + ["window_start_ns", "window_end_ns"]
+
 SPLIT_NAMES = ("train", "validation", "test")
 
 # Check that all three ratios form a valid partition
 def validate_configuration():
     ratios = (TRAIN_RATIO, VALIDATION_RATIO, TEST_RATIO)
+
     if any(not 0 <= ratio <= 1 for ratio in ratios):
         raise ValueError("Split ratios must be between 0 and 1.")
+
     if not np.isclose(sum(ratios), 1.0):
         raise ValueError("TRAIN_RATIO + VALIDATION_RATIO + TEST_RATIO must equal 1.")
 
@@ -52,7 +81,7 @@ def load_feature_data(data_type, filename):
     if dataframe.empty:
         raise ValueError(f"Feature file is empty: {path}")
 
-    missing = set(WINDOW_COLUMNS + ["label"]) - set(dataframe.columns)
+    missing = (set(WINDOW_COLUMNS + ["label"]) - set(dataframe.columns))
 
     if missing:
         raise ValueError(f"{filename} is missing columns: {sorted(missing)}")
@@ -69,7 +98,7 @@ def load_feature_data(data_type, filename):
     if (dataframe.groupby(EXECUTION_COLUMNS)["label"].nunique() > 1).any():
         raise ValueError(f"{filename} contains conflicting labels for one execution.")
 
-    # The two storage files must contain all three source datasets.
+    # The two storage files must contain all three datasets.
     if data_type.startswith("storage_"):
         found = set(dataframe["dataset"].unique())
         expected = {"RanSAP", "RanSMAP", "Benign"}
@@ -78,6 +107,7 @@ def load_feature_data(data_type, filename):
             raise ValueError(f"{filename} must contain RanSAP, RanSMAP and Benign; found {sorted(found)}")
 
     return dataframe
+
 
 # Calculate execution counts, keeping each class partition nonempty
 def calculate_split_counts(number_of_executions):
@@ -93,25 +123,29 @@ def calculate_split_counts(number_of_executions):
 
     return train_count, validation_count, test_count
 
+
 # Assign each (dataset, execution_id) pair exactly once across all modalities
 # Stratify by label so each partition contains ransomware and benign executions
 def create_global_execution_split(feature_data):
     executions = pd.concat(
-        [frame[EXECUTION_COLUMNS + ["label"]] for frame in feature_data.values()],
-        ignore_index=True,
+        [
+            frame[EXECUTION_COLUMNS + ["label"]]
+            for frame in feature_data.values()
+        ],
+        ignore_index=True
     ).drop_duplicates().sort_values(EXECUTION_COLUMNS).reset_index(drop=True)
 
     if (executions.groupby(EXECUTION_COLUMNS)["label"].nunique() > 1).any():
         raise ValueError("Conflicting labels for an execution across feature files.")
 
     assignments = np.empty(len(executions), dtype=object)
+
     rng = np.random.default_rng(RANDOM_SEED)
 
     for label in (0, 1):
         indices = np.flatnonzero(executions["label"].to_numpy() == label)
         train_count, validation_count, _ = calculate_split_counts(len(indices))
         shuffled_indices = rng.permutation(indices)
-
         assignments[shuffled_indices[:train_count]] = "train"
         assignments[shuffled_indices[train_count:train_count + validation_count]] = "validation"
         assignments[shuffled_indices[train_count + validation_count:]] = "test"
@@ -119,6 +153,7 @@ def create_global_execution_split(feature_data):
     executions["split"] = assignments
 
     return executions
+
 
 # Join the shared assignment onto every original feature window
 def apply_execution_split(dataframe, global_split, data_type):
@@ -141,51 +176,173 @@ def apply_execution_split(dataframe, global_split, data_type):
 
     return result
 
-# Write three CSVs for one feature type, retaining the original schema
+
+# Write three CSVs for one original feature type, retaining the original schema
 def save_split_files(dataframe, data_type):
     total_saved = 0
 
     for split_name in SPLIT_NAMES:
         partition = dataframe.loc[dataframe["split"] == split_name].drop(columns="split")
-        output = SPLITS_DIR / f"{data_type}_{split_name}.csv"
+        output = (SPLITS_DIR / f"{data_type}_{split_name}.csv")
         partition.to_csv(output, index=False)
         total_saved += len(partition)
         execution_count = len(partition[EXECUTION_COLUMNS].drop_duplicates())
 
-        print(f"  {split_name}: {execution_count} executions, {len(partition)} windows")
+        print(f"\t{split_name}: {execution_count} executions, {len(partition)} windows")
 
     if total_saved != len(dataframe):
         raise RuntimeError(f"Rows were lost when saving {data_type} splits.")
 
+# Paper Feature Splitting (Optional), skip silently when features_paper/ does not exist.
+def split_paper_features(global_split):
+    # Skip silently if Step 05A was not executed
+    if not PAPER_FEATURES_DIR.is_dir():
+        return
 
+    # Validate required paper feature files
+    for filename in PAPER_FEATURE_FILES.values():
+        path = PAPER_FEATURES_DIR / filename
+
+        if not path.is_file():
+            raise FileNotFoundError(f"Missing paper feature file: {path}")
+
+    paper_data = {}
+
+    # Load and validate both paper feature datasets
+    for data_type, filename in PAPER_FEATURE_FILES.items():
+        path = PAPER_FEATURES_DIR / filename
+        dataframe = pd.read_csv(path)
+
+        if dataframe.empty:
+            raise ValueError(f"Paper feature file is empty: {path}")
+
+        required = WINDOW_COLUMNS + ["label"]
+
+        missing = set(required) - set(dataframe.columns)
+
+        if missing:
+            raise ValueError(f"{filename} is missing columns: {sorted(missing)}")
+
+        if dataframe[required].isna().any().any():
+            raise ValueError(f"{filename} contains missing metadata.")
+
+        if dataframe.duplicated(subset=WINDOW_COLUMNS).any():
+            raise ValueError(f"{filename} contains duplicate execution windows.")
+
+        if not dataframe["label"].isin([0, 1]).all():
+            raise ValueError(f"{filename} contains invalid labels.")
+
+        if (dataframe.groupby(EXECUTION_COLUMNS)["label"].nunique() > 1).any():
+            raise ValueError(
+                f"{filename} contains conflicting execution labels."
+            )
+
+        # Verify the number of paper features
+        metadata = set(required)
+        feature_columns = [
+            col for col in dataframe.columns
+            if col not in metadata
+        ]
+
+        expected_count = 5 if data_type == "storage_paper" else 18
+
+        if len(feature_columns) != expected_count:
+            raise ValueError(f"{filename}: expected {expected_count} features, found {len(feature_columns)}.")
+
+        # Verify paper feature values are finite
+        numeric_features = dataframe[feature_columns].apply(pd.to_numeric, errors="coerce")
+
+        if not np.isfinite(numeric_features.to_numpy(dtype=float)).all():
+            raise ValueError(f"{filename} contains invalid feature values.")
+
+        # Reuse original execution assignments
+        assignments = global_split[EXECUTION_COLUMNS + ["label", "split"]]
+
+        result = dataframe.merge(
+            assignments,
+            on=EXECUTION_COLUMNS,
+            how="left",
+            sort=False,
+            validate="many_to_one",
+            suffixes=("", "_original")
+        )
+
+        if len(result) != len(dataframe):
+            raise RuntimeError(f"Row count changed for {data_type}.")
+
+        # Check unmatched executions
+        if result["split"].isna().any():
+            unmatched = result.loc[result["split"].isna(), EXECUTION_COLUMNS].drop_duplicates()
+
+            raise ValueError(f"{data_type} has executions without original split assignments:\n{unmatched.head(10)}")
+
+        # Ensure labels match the original dataset
+        if not (result["label"] == result["label_original"]).all():
+            raise ValueError(f"Label mismatch between {data_type} and original assignments.")
+
+        result = result.drop(columns="label_original")
+
+        # Verify no execution leakage
+        if (result.groupby(EXECUTION_COLUMNS)["split"].nunique() > 1).any():
+            raise RuntimeError(f"Execution leakage detected in {data_type}.")
+
+        paper_data[data_type] = result
+
+    # Save only after both paper datasets pass validation
+    PAPER_SPLITS_DIR.mkdir(parents=True, exist_ok=True)
+
+    print("\nPaper Feature Data Splitting\n")
+
+    for data_type, dataframe in paper_data.items():
+        print(f"\n{data_type}: {len(dataframe)} windows")
+
+        total_saved = 0
+
+        for split_name in SPLIT_NAMES:
+            partition = dataframe.loc[dataframe["split"] == split_name].drop(columns="split")
+            output = (PAPER_SPLITS_DIR / f"{data_type}_{split_name}.csv")
+            partition.to_csv(output, index=False)
+            total_saved += len(partition)
+            execution_count = len(partition[EXECUTION_COLUMNS].drop_duplicates())
+
+            print(f"\t{split_name}: {execution_count} executions, {len(partition)} windows")
+
+        if total_saved != len(dataframe):
+            raise RuntimeError(f"Rows were lost while splitting {data_type}.")
+
+    print("\nPaper Feature Splitting Complete")
+
+# Main
 if __name__ == "__main__":
     validate_configuration()
+
     SPLITS_DIR.mkdir(parents=True, exist_ok=True)
 
-    # File title
+    # Original splitting
     print("\nExecution-Level Data Splitting\n")
 
-    # Load and validate all six datasets before assigning any executions
-    feature_data = {
-        data_type: load_feature_data(data_type, filename)
+    # Load and validate all six original datasets
+    feature_data = {data_type: load_feature_data(data_type, filename)
         for data_type, filename in FEATURE_FILES.items()
     }
 
-    # One assignment shared by RanSAP/RanSMAP/Benign storage and RanSMAP/Benign memory
+    # Shared assignment for all original features
     global_split = create_global_execution_split(feature_data)
     global_split.to_csv(SPLITS_DIR / "execution_split_assignments.csv", index=False)
 
     print(f"Unique executions across all files: {len(global_split)}")
 
     for split_name in SPLIT_NAMES:
-        print(f"  {split_name}: {(global_split['split'] == split_name).sum()} executions")
+        print(f"\t{split_name}: {(global_split['split'] == split_name).sum()} executions")
 
-    # Apply that assignment to every feature file, without changing features
+    # Split the original 86-feature datasets
     for data_type, dataframe in feature_data.items():
         print(f"\n{data_type}: {len(dataframe)} windows")
-
         split_data = apply_execution_split(dataframe, global_split, data_type)
         save_split_files(split_data, data_type)
 
     # Closure
     print("\nData Splitting Complete")
+
+    # Optional splitting
+    split_paper_features(global_split)
